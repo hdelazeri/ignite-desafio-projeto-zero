@@ -13,6 +13,7 @@ import { getPrismicClient } from '../services/prismic';
 
 import commonStyles from '../styles/common.module.scss';
 import styles from './home.module.scss';
+import { ExitPreviewButton } from '../components/ExitPreviewButton';
 
 interface Post {
   uid?: string;
@@ -31,6 +32,7 @@ interface PostPagination {
 
 interface HomeProps {
   postsPagination: PostPagination;
+  preview: boolean;
 }
 
 function processPost(post): Post {
@@ -45,7 +47,7 @@ function processPost(post): Post {
   };
 }
 
-const Home: React.FC<HomeProps> = ({ postsPagination }) => {
+const Home: React.FC<HomeProps> = ({ postsPagination, preview }) => {
   const [posts, setPosts] = useState(postsPagination.results);
   const [nextPage, setNextPage] = useState(postsPagination.next_page);
 
@@ -102,17 +104,25 @@ const Home: React.FC<HomeProps> = ({ postsPagination }) => {
           </button>
         )}
       </div>
+
+      {preview && <ExitPreviewButton />}
     </>
   );
 };
 
 export default Home;
 
-export const getStaticProps: GetStaticProps = async () => {
+export const getStaticProps: GetStaticProps = async ({
+  preview = false,
+  previewData,
+}) => {
   const prismic = getPrismicClient();
   const postsResponse = await prismic.query(
     [Prismic.predicates.at('document.type', 'post')],
-    { fetch: ['post.title', 'post.subtitle', 'post.author'] }
+    {
+      fetch: ['post.title', 'post.subtitle', 'post.author'],
+      ref: previewData?.ref ?? null,
+    }
   );
 
   const posts: Post[] = postsResponse.results.map(processPost);
@@ -123,6 +133,7 @@ export const getStaticProps: GetStaticProps = async () => {
         next_page: postsResponse.next_page,
         results: posts,
       },
+      preview,
     },
     revalidate: 60 * 60 * 3, // 3 hours
   };
